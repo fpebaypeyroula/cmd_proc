@@ -94,7 +94,6 @@ commands. It would be unusual to echo back binary data.
     right number of address and data bytes must be supplied. Most
     significant bytes go first.
     <br>There is no response.</dd>
-</dl>
 
 <dt>Burst read (0x02) and write (0x03)</dt>
 <dd>A burst read or write operation allows to read or write a given amount 

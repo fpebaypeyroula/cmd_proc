@@ -395,7 +395,6 @@ begin
 				end if;
 
 				if bc = ADDR_MAX8 then
-					read_req  <= '1';
 					bc_n      <= 0;
 					pc_n      <= pc + 1;
 				end if;
@@ -407,7 +406,6 @@ begin
 				end if;
 
 				if bc = DATA_MAX8 then
-					read_req  <= '1';
 					pc_n      <= pc + 1;
 				end if;
 

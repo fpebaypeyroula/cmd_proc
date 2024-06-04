@@ -131,6 +131,59 @@ begin
 
 		wait until write_req = '1';
 		wait for 100 ns;
+
+		-- burst read
+		rx_data <= x"02";
+		rx_data_valid <= '1'; wait for 20 ns; rx_data_valid <= '0'; wait for 40 ns;
+		rx_data <= x"01";
+		rx_data_valid <= '1'; wait for 20 ns; rx_data_valid <= '0'; wait for 40 ns;
+		rx_data <= x"23";
+		rx_data_valid <= '1'; wait for 20 ns; rx_data_valid <= '0'; wait for 40 ns;
+		rx_data <= x"00";
+		rx_data_valid <= '1'; wait for 20 ns; rx_data_valid <= '0'; wait for 40 ns;
+		rx_data <= x"04";
+		rx_data_valid <= '1'; wait for 20 ns; rx_data_valid <= '0';
+		
+		wait until tx_req = '1'; wait for 20 ns; tx_busy <= '1'; wait for 80 ns; tx_busy <= '0';
+		wait until tx_req = '1'; wait for 20 ns; tx_busy <= '1'; wait for 80 ns; tx_busy <= '0';
+		wait until tx_req = '1'; wait for 20 ns; tx_busy <= '1'; wait for 80 ns; tx_busy <= '0';
+		wait until tx_req = '1'; wait for 20 ns; tx_busy <= '1'; wait for 80 ns; tx_busy <= '0';
+		wait until tx_req = '1'; wait for 20 ns; tx_busy <= '1'; wait for 80 ns; tx_busy <= '0';
+		wait until tx_req = '1'; wait for 20 ns; tx_busy <= '1'; wait for 80 ns; tx_busy <= '0';
+		wait until tx_req = '1'; wait for 20 ns; tx_busy <= '1'; wait for 80 ns; tx_busy <= '0';
+		wait until tx_req = '1'; wait for 20 ns; tx_busy <= '1'; wait for 80 ns; tx_busy <= '0';
+
+
+		-- burst write
+		rx_data <= x"03";
+		rx_data_valid <= '1'; wait for 20 ns; rx_data_valid <= '0'; wait for 40 ns;
+		rx_data <= x"01";
+		rx_data_valid <= '1'; wait for 20 ns; rx_data_valid <= '0'; wait for 40 ns;
+		rx_data <= x"23";
+		rx_data_valid <= '1'; wait for 20 ns; rx_data_valid <= '0'; wait for 40 ns;
+		rx_data <= x"00";
+		rx_data_valid <= '1'; wait for 20 ns; rx_data_valid <= '0'; wait for 40 ns;
+		rx_data <= x"04";
+		rx_data_valid <= '1'; wait for 20 ns; rx_data_valid <= '0'; wait for 40 ns;
+		rx_data <= x"45";
+		rx_data_valid <= '1'; wait for 20 ns; rx_data_valid <= '0'; wait for 40 ns;
+		rx_data <= x"67";
+		rx_data_valid <= '1'; wait for 20 ns; rx_data_valid <= '0'; wait for 40 ns;
+		rx_data <= x"FA";
+		rx_data_valid <= '1'; wait for 20 ns; rx_data_valid <= '0'; wait for 40 ns;
+		rx_data <= x"BE";
+		rx_data_valid <= '1'; wait for 20 ns; rx_data_valid <= '0'; wait for 40 ns;
+		rx_data <= x"A5";
+		rx_data_valid <= '1'; wait for 20 ns; rx_data_valid <= '0'; wait for 40 ns;
+		rx_data <= x"33";
+		rx_data_valid <= '1'; wait for 20 ns; rx_data_valid <= '0'; wait for 40 ns;
+		rx_data <= x"24";
+		rx_data_valid <= '1'; wait for 20 ns; rx_data_valid <= '0'; wait for 40 ns;
+		rx_data <= x"FF";
+		rx_data_valid <= '1'; wait for 20 ns; rx_data_valid <= '0';
+
+		wait until write_req = '1';
+		wait for 1 us;
 		
 	end process;
 

@@ -18,6 +18,7 @@
 
 library ieee;
 use ieee.std_logic_1164.all;
+use ieee.std_logic_unsigned.all;
 use ieee.numeric_std.all;
 
 
@@ -65,11 +66,12 @@ architecture rtl of cmd_proc is
 	end function;
 
 
-	type state_t is (idle, asc_read, asc_write, bin_read, bin_write);
+	type state_t is (idle, asc_read, asc_write, bin_read, bin_write, burst_read, burst_write);
 
 	signal proc_state, proc_state_n: state_t;
 	signal pc, pc_n: integer range 0 to 7 := 0;	-- program counter
 	signal bc, bc_n: integer range 0 to maximum_int(ADDR_MAX4, DATA_MAX4) + 1 := 0;	-- byte counter
+	signal size, size_n: std_logic_vector(ADDR_SIZE - 1 downto 0) := (others => '0'); -- burst size counter
 
 	signal address_i, address_n: std_logic_vector(ADDR_SIZE - 1 downto 0) := (others => '0');
 	signal wr_data_i, wr_data_n: std_logic_vector(DATA_SIZE - 1 downto 0) := (others => '0');
@@ -166,6 +168,7 @@ begin
 				proc_state  <= idle;
 				pc          <= 0;
 				bc          <= 0;
+				size        <= (others => '0');
 				address_i   <= (others => '0');
 				wr_data_i   <= (others => '0');
 				rd_data_i   <= (others => '0');
@@ -174,6 +177,7 @@ begin
 				proc_state  <= proc_state_n;
 				pc          <= pc_n;
 				bc          <= bc_n;
+				size        <= size_n;
 				address_i   <= address_n;
 				wr_data_i   <= wr_data_n;
 				rd_data_i   <= rd_data_n;
@@ -195,6 +199,7 @@ begin
 		proc_state_n <= proc_state;
 		pc_n         <= pc;
 		bc_n         <= bc;
+		size_n       <= size;
 		address_n    <= address_i;
 		wr_data_n    <= wr_data_i;
 		rd_data_n    <= rd_data_i;
@@ -219,6 +224,12 @@ begin
 				when SOH =>
 					-- x"01": write data, binary
 					proc_state_n <= bin_write;
+				when STX =>
+					-- x"02": read data, burst (binary)
+					proc_state_n <= burst_read;
+				when ETX =>
+					-- x"03": write data, bust (binary)
+					proc_state_n <= burst_write;
 				when others =>
 					-- huh?
 					proc_state_n <= idle;
@@ -227,6 +238,7 @@ begin
 
 			pc_n      <= 0;
 			bc_n      <= 0;
+			size_n    <= (others => '0');
 			address_n <= (others => '0');
 			rd_data_n <= (others => '0');
 			wr_data_n <= (others => '0');
@@ -412,6 +424,123 @@ begin
 
 			when others =>
 				write_req    <= '1';
+				proc_state_n <= idle;
+
+			end case;
+
+		when burst_read =>
+			case pc is
+			when 0 =>
+				-- read address
+				if rx_data_valid = '1' then
+					address_n <= address_i(address_i'left - 8 downto 0) & rx_data;
+					bc_n      <= bc + 1;
+				end if;
+
+				if bc = ADDR_MAX8 then
+					bc_n <= 0;
+					pc_n <= pc + 1;
+				end if;
+
+			when 1 =>
+				-- read size
+				if rx_data_valid = '1' then
+					size_n <= size(size'left - 8 downto 0) & rx_data;
+					bc_n   <= bc + 1;
+				end if;
+
+				if bc = ADDR_MAX8 then
+					bc_n      <= 0;
+					pc_n      <= pc + 1;
+				end if;
+
+			when 2 =>
+				-- fetch data
+				read_req <= '1';
+				pc_n     <= pc + 1;
+
+			when 3 =>
+				-- register data
+				rd_data_n <= rd_data;
+				pc_n      <= pc + 1;
+
+			when 4 =>
+				-- return data
+				if tx_busy = '0' and tx_req = '0' then
+					tx_req_n <= '1';
+				end if;
+
+				if tx_req = '1' then
+					rd_data_n <= rd_data_i(rd_data_i'left - 8 downto 0) & x"00";
+					bc_n      <= bc + 1;
+				end if;
+
+				if bc = DATA_MAX8 then
+					if size = 1 then
+						pc_n   <= pc + 1;
+					else
+						size_n <= size - 1;
+						bc_n   <= 0;
+						pc_n   <= 2;
+					end if;
+				end if;
+
+				tx_data <= rd_data_i(rd_data'left downto rd_data'left - 7);
+
+			when others =>
+				proc_state_n <= idle;
+
+			end case;
+
+		when burst_write =>
+			case pc is
+			when 0 => 
+				-- read address
+				if rx_data_valid = '1' then
+					address_n <= address_i(address_i'left - 8 downto 0) & rx_data;
+					bc_n      <= bc + 1;
+				end if;
+
+				if bc = ADDR_MAX8 then
+					bc_n <= 0;
+					pc_n <= pc + 1;
+				end if;
+
+			when 1 =>
+				-- read size
+				if rx_data_valid = '1' then
+					size_n <= size(size'left - 8 downto 0) & rx_data;
+					bc_n   <= bc + 1;
+				end if;
+
+				if bc = ADDR_MAX8 then
+					bc_n <= 0;
+					pc_n <= pc + 1;
+				end if;
+
+			when 2 =>
+				if rx_data_valid = '1' then
+					wr_data_n <= wr_data_i(wr_data_i'left - 8 downto 0) & rx_data;
+					bc_n      <= bc + 1;
+				end if;
+
+				if bc = DATA_MAX8 then
+					pc_n <= pc + 1;
+				end if;
+
+			when 3 =>
+				-- write state
+				write_req  <= '1';
+				if size = 1 then
+					pc_n   <= pc + 1;
+				else
+					size_n <= size - 1;
+					bc_n   <= 0;
+					pc_n   <= 2;
+				end if;
+
+			when others =>
+				--write_req    <= '1';
 				proc_state_n <= idle;
 
 			end case;
